@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.celine.onlineticketmanagementserver.dto.PersonRequest;
 import com.celine.onlineticketmanagementserver.enums.RoleType;
 import com.celine.onlineticketmanagementserver.model.Person;
 import com.celine.onlineticketmanagementserver.service.PersonService;
@@ -147,14 +148,14 @@ public class PersonController {
     }
 
     @PostMapping
-    public ResponseEntity<Person> createPerson(@Valid @RequestBody Person person) {
-        log.info("POST request to create person with email: {}", person.getEmail());
-        return ResponseEntity.status(HttpStatus.CREATED).body(personService.createPerson(person));
+    public ResponseEntity<Person> createPerson(@Valid @RequestBody PersonRequest request) {
+        log.info("POST request to create person with email: {}", request.getEmail());
+        return ResponseEntity.status(HttpStatus.CREATED).body(personService.createPerson(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Person> updatePerson(@PathVariable Long id, @Valid @RequestBody Person person) {
-        return ResponseEntity.ok(personService.updatePerson(id, person));
+    public ResponseEntity<Person> updatePerson(@PathVariable Long id, @Valid @RequestBody PersonRequest request) {
+        return ResponseEntity.ok(personService.updatePerson(id, request));
     }
 
     @PutMapping("/{personId}/roles")

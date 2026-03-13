@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.celine.onlineticketmanagementserver.dto.PersonRequest;
 import com.celine.onlineticketmanagementserver.enums.LocationType;
 import com.celine.onlineticketmanagementserver.enums.RoleType;
 import com.celine.onlineticketmanagementserver.exception.ResourceNotFoundException;
@@ -126,19 +127,23 @@ public class PersonService {
     }
 
     @Transactional
-    public Person createPerson(Person person) {
-        log.info("Creating new person with email: {}", person.getEmail());
-        validateNewPerson(person);
+    public Person createPerson(PersonRequest request) {
+        log.info("Creating new person with email: {}", request.getEmail());
+        validateNewPerson(request);
 
-        Location village = resolveVillage(person.getLivesIn());
+        Location village = resolveVillage(request.getVillageId());
+
+        Person person = new Person();
+        person.setFirstName(request.getFirstName());
+        person.setLastName(request.getLastName());
+        person.setEmail(request.getEmail());
+        person.setPhone(request.getPhone());
+        person.setUsername(request.getUsername());
+        person.setPassword(passwordEncoder.encode(request.getPassword()));
         person.setLivesIn(village);
 
-        if (person.getPassword() != null && !person.getPassword().isBlank()) {
-            person.setPassword(passwordEncoder.encode(person.getPassword()));
-        }
-
-        if (person.getRoles() != null && !person.getRoles().isEmpty()) {
-            person.setRoles(resolveRoles(person.getRoles()));
+        if (request.getRoleIds() != null && !request.getRoleIds().isEmpty()) {
+            person.setRoles(resolveRolesByIds(request.getRoleIds()));
         }
 
         Person savedPerson = personRepository.save(person);
@@ -147,54 +152,43 @@ public class PersonService {
     }
 
     @Transactional
-    public Person updatePerson(Long id, Person updatedPerson) {
+    public Person updatePerson(Long id, PersonRequest request) {
         log.info("Updating person with ID: {}", id);
 
         Person existingPerson = personRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Person not found with id: " + id));
 
-        if (updatedPerson.getEmail() != null && !updatedPerson.getEmail().equalsIgnoreCase(existingPerson.getEmail())
-                && Boolean.TRUE.equals(personRepository.existsByEmail(updatedPerson.getEmail()))) {
+        if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(existingPerson.getEmail())
+                && Boolean.TRUE.equals(personRepository.existsByEmail(request.getEmail()))) {
             throw new ValidationException("Email already exists");
         }
 
-        if (updatedPerson.getUsername() != null && !updatedPerson.getUsername().equalsIgnoreCase(existingPerson.getUsername())
-                && personRepository.existsByUsername(updatedPerson.getUsername())) {
+        if (request.getUsername() != null && !request.getUsername().equalsIgnoreCase(existingPerson.getUsername())
+                && personRepository.existsByUsername(request.getUsername())) {
             throw new ValidationException("Username already exists");
         }
 
-        if (updatedPerson.getPhone() != null
+        if (request.getPhone() != null
                 && existingPerson.getPhone() != null
-                && !updatedPerson.getPhone().equalsIgnoreCase(existingPerson.getPhone())
-                && Boolean.TRUE.equals(personRepository.existsByPhone(updatedPerson.getPhone()))) {
+                && !request.getPhone().equalsIgnoreCase(existingPerson.getPhone())
+                && Boolean.TRUE.equals(personRepository.existsByPhone(request.getPhone()))) {
             throw new ValidationException("Phone already exists");
         }
 
-        existingPerson.setFirstName(updatedPerson.getFirstName());
-        existingPerson.setLastName(updatedPerson.getLastName());
-        existingPerson.setEmail(updatedPerson.getEmail());
-        existingPerson.setPhone(updatedPerson.getPhone());
-        existingPerson.setUsername(updatedPerson.getUsername());
-        existingPerson.setEnabled(updatedPerson.getEnabled());
-        existingPerson.setAccountNonExpired(updatedPerson.getAccountNonExpired());
-        existingPerson.setAccountNonLocked(updatedPerson.getAccountNonLocked());
-        existingPerson.setCredentialsNonExpired(updatedPerson.getCredentialsNonExpired());
+        existingPerson.setFirstName(request.getFirstName());
+        existingPerson.setLastName(request.getLastName());
+        existingPerson.setEmail(request.getEmail());
+        existingPerson.setPhone(request.getPhone());
+        existingPerson.setUsername(request.getUsername());
 
-        if (updatedPerson.getPassword() != null && !updatedPerson.getPassword().isBlank()) {
-            existingPerson.setPassword(passwordEncoder.encode(updatedPerson.getPassword()));
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            existingPerson.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
-        if (updatedPerson.getLivesIn() != null) {
-            existingPerson.setLivesIn(resolveVillage(updatedPerson.getLivesIn()));
-        }
+        existingPerson.setLivesIn(resolveVillage(request.getVillageId()));
 
-        if (updatedPerson.getRoles() != null) {
-            existingPerson.setRoles(resolveRoles(updatedPerson.getRoles()));
-        }
-
-        if (updatedPerson.getProfile() != null) {
-            updatedPerson.getProfile().setPerson(existingPerson);
-            existingPerson.setProfile(updatedPerson.getProfile());
+        if (request.getRoleIds() != null) {
+            existingPerson.setRoles(resolveRolesByIds(request.getRoleIds()));
         }
 
         Person savedPerson = personRepository.save(existingPerson);
@@ -318,35 +312,41 @@ public class PersonService {
         return personRepository.findAll(pageable);
     }
 
-    private void validateNewPerson(Person person) {
-        if (person.getEmail() == null || person.getEmail().isBlank()) {
+    private void validateNewPerson(PersonRequest request) {
+        if (request.getFirstName() == null || request.getFirstName().isBlank()) {
+            throw new ValidationException("First name is required");
+        }
+        if (request.getLastName() == null || request.getLastName().isBlank()) {
+            throw new ValidationException("Last name is required");
+        }
+        if (request.getEmail() == null || request.getEmail().isBlank()) {
             throw new ValidationException("Email is required");
         }
-        if (person.getUsername() == null || person.getUsername().isBlank()) {
+        if (request.getUsername() == null || request.getUsername().isBlank()) {
             throw new ValidationException("Username is required");
         }
-        if (person.getPassword() == null || person.getPassword().isBlank()) {
+        if (request.getPassword() == null || request.getPassword().isBlank()) {
             throw new ValidationException("Password is required");
         }
-        if (Boolean.TRUE.equals(personRepository.existsByEmail(person.getEmail()))) {
+        if (Boolean.TRUE.equals(personRepository.existsByEmail(request.getEmail()))) {
             throw new ValidationException("Email already exists");
         }
-        if (personRepository.existsByUsername(person.getUsername())) {
+        if (personRepository.existsByUsername(request.getUsername())) {
             throw new ValidationException("Username already exists");
         }
-        if (person.getPhone() != null && !person.getPhone().isBlank()
-                && Boolean.TRUE.equals(personRepository.existsByPhone(person.getPhone()))) {
+        if (request.getPhone() != null && !request.getPhone().isBlank()
+                && Boolean.TRUE.equals(personRepository.existsByPhone(request.getPhone()))) {
             throw new ValidationException("Phone already exists");
         }
     }
 
-    private Location resolveVillage(Location locationReference) {
-        if (locationReference == null || locationReference.getId() == null) {
-            throw new ValidationException("Village is required when creating or updating a person");
+    private Location resolveVillage(Long villageId) {
+        if (villageId == null) {
+            throw new ValidationException("Village id is required when creating or updating a person");
         }
 
-        Location village = locationRepository.findById(locationReference.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Location not found with id: " + locationReference.getId()));
+        Location village = locationRepository.findById(villageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Location not found with id: " + villageId));
 
         if (village.getType() != LocationType.VILLAGE) {
             throw new ValidationException("Person must be linked to a village only");
@@ -354,14 +354,14 @@ public class PersonService {
         return village;
     }
 
-    private Set<Role> resolveRoles(Set<Role> roles) {
+    private Set<Role> resolveRolesByIds(Set<Long> roleIds) {
         Set<Role> validatedRoles = new HashSet<>();
-        for (Role role : roles) {
-            if (role.getId() == null) {
+        for (Long roleId : roleIds) {
+            if (roleId == null) {
                 throw new ValidationException("Role id is required");
             }
-            Role existingRole = roleRepository.findById(role.getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Role not found with id: " + role.getId()));
+            Role existingRole = roleRepository.findById(roleId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Role not found with id: " + roleId));
             validatedRoles.add(existingRole);
         }
         return validatedRoles;

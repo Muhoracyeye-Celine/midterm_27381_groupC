@@ -128,6 +128,12 @@ public class DataSeeder implements CommandLineRunner {
                 existingAdmin.setCredentialsNonExpired(true);
                 existingAdmin.setFailedLoginAttempts(0);
                 existingAdmin.setLockTime(null);
+                Location defaultVillage = locationRepository.findByType(LocationType.VILLAGE).stream()
+                        .findFirst()
+                        .orElse(null);
+                if (defaultVillage != null && (existingAdmin.getLivesIn() == null || existingAdmin.getLivesIn().getType() != LocationType.VILLAGE)) {
+                    existingAdmin.setLivesIn(defaultVillage);
+                }
                 existingAdmin.setUpdatedAt(new Date());
 
                 personRepository.save(existingAdmin);
@@ -145,12 +151,12 @@ public class DataSeeder implements CommandLineRunner {
             Role adminRole = roleRepository.findByName(RoleType.ADMIN)
                     .orElseThrow(() -> new RuntimeException("ADMIN role not found"));
 
-            Location defaultLocation = locationRepository.findAll().stream()
+            Location defaultVillage = locationRepository.findByType(LocationType.VILLAGE).stream()
                     .findFirst()
                     .orElse(null);
 
-            if (defaultLocation == null) {
-                logger.warn("No locations found. Cannot create admin user without a location.");
+            if (defaultVillage == null) {
+                logger.warn("No villages found. Cannot create admin user without a village.");
                 return;
             }
 
@@ -161,7 +167,7 @@ public class DataSeeder implements CommandLineRunner {
             admin.setEmail("muhoracyeyecln@gmail.com");
             admin.setPhone("+250788139992");
             admin.setPassword(passwordEncoder.encode("celine123"));
-            admin.setLivesIn(defaultLocation);
+            admin.setLivesIn(defaultVillage);
             admin.setEnabled(true);
             admin.setAccountNonExpired(true);
             admin.setAccountNonLocked(true);

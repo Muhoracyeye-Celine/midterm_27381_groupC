@@ -97,6 +97,10 @@ This relationship is implemented using a join table called:
 
 person_roles
 
+Join tables used in the system:
+- person_roles → links Persons and Roles
+- venue_managers → links Persons and Venues
+
 ### One-to-One
 
 ## Example:
@@ -109,13 +113,12 @@ Person 1 --- 1 PersonProfile
 
 ## Location Hierarchy
 
-Locations follow a hierarchical administrative structure.
+Users are saved using only the `villageId`.  
+The system then resolves the administrative hierarchy automatically through the Location table:
 
-` Province -> District -> Sector -> Cell -> Village `
+Village → Cell → Sector → District → Province
 
-Each location may have a parent location.
-
-Users are saved using the Village level, which allows retrieval by higher administrative levels such as Province.
+This is possible because the Location entity is self-referencing using `parent_location_id`.
 
 ## Key Features Implemented
 Save Location
@@ -143,8 +146,16 @@ Create Person ( Users are created using a Village ID.)
 ## Example body:
 
 ``` json 
-{ "firstName": "Ayla", "lastName": "Isaro", "email": "isaro@gmail.com", "phone": "0780000003", "username": "ayla", "password": "123456", "livesIn": { "id": 132 } 
-} 
+{
+ "firstName": "Ayla",
+ "lastName": "Isaro",
+ "email": "isaro@gmail.com",
+ "phone": "0780000003",
+ "username": "ayla",
+ "password": "123456",
+ "villageId": 132,
+ "roleIds": [1]
+}
 ```
 
 ## Sorting
